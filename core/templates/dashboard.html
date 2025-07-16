@@ -1,0 +1,175 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+</head>
+<body>
+  {% block content %}
+  
+  <h2>Dashboard</h2>
+
+  <!-- Live Location Map of a Tracked Friend -->
+  {% if friend %}
+  <p><strong>Live Address:</strong> {{ friend.profile.address }}</p>
+  <iframe
+      width="100%"
+      height="300"
+      src="https://www.google.com/maps?q={{ friend.profile.latitude }},{{ friend.profile.longitude }}&hl=es;z=14&output=embed">
+  </iframe>
+  {% endif %}
+
+  <!-- All Users List (For Superuser maybe) -->
+  <section>
+    <h3>All Users</h3>
+    <ul>
+      {% for user in users %}
+        <li>
+          {{ user.username }}
+          {% if user != request.user %}
+            <a href="{% url 'send_friend_request' user.id %}">Send Request</a> |
+            <a href="{% url 'block_user' user.id %}">Block</a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <!-- Received Friend Requests -->
+  <section>
+    <h3>Received Friend Requests</h3>
+    <ul>
+      {% for req in received_requests %}
+        <li>
+          {{ req.from_user.username }}
+          <a href="{% url 'accept_friend_request' req.id %}">Accept</a> |
+          <a href="{% url 'reject_friend_request' req.id %}">Reject</a>
+        </li>
+      {% empty %}
+        <li>No new requests.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <!-- Friends -->
+  <section>
+    <h3>Friends</h3>
+    <ul>
+        {% for friend in friends %}
+        <li>
+            {% if friend.from_user == request.user %}
+                <a href="{% url 'track_friend' friend.to_user.id %}">
+                    {{ friend.to_user.username }}
+                </a>
+            {% else %}
+                <a href="{% url 'track_friend' friend.from_user.id %}">
+                    {{ friend.from_user.username }}
+                </a>
+            {% endif %}
+        </li>
+        {% empty %}
+        <li>You have no friends yet.</li>
+        {% endfor %}
+    </ul>
+  </section>
+
+  <!-- Distance Between Friends -->
+  <section>
+    <h3>Friend Distance Tracker</h3>
+    <ul>
+      {% for name, distance in friend_distances %}
+        <li>{{ name }} is {{ distance }} km away</li>
+      {% empty %}
+        <li>No friends with location data.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <!-- Suggestions -->
+  <section>
+    <h3>People You May Know</h3>
+    <ul>
+      {% for user in users %}
+        <li>
+          {{ user.username }}
+          <a href="{% url 'send_friend_request' user.id %}">Send Request</a> |
+          <a href="{% url 'block_user' user.id %}">Block</a>
+        </li>
+      {% empty %}
+        <li>No suggestions available.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <!-- Blocked Users -->
+  <section>
+    <h3>Blocked Users</h3>
+    <ul>
+      {% for user in blocked_users %}
+      <li>
+        {{ user.username }}
+        <a href="{% url 'unblock_user' user.id %}">Unblock</a>
+      </li>
+      {% empty %}
+      <li>You haven’t blocked anyone.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {% endblock %}
+</body>
+
+<!-- Auto Location Update Script -->
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function updateLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            fetch('/update-location/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    latitude: latitude,
+                    longitude: longitude
+                })
+            });
+        }, function(error) {
+            console.log("Location error:", error.message);
+        }, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        });
+    } else {
+        console.log("Geolocation is not supported by this browser.");
+    }
+}
+
+// Update location every 10 seconds
+setInterval(updateLocation, 10000);
+updateLocation();
+</script>
+</html>

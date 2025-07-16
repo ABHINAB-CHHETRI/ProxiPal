@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: proxipal
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn ProxiPal.wsgi:application
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: ProxiPal.settings
+      - key: DATABASE_URL
+        fromDatabase:
+          name: proxipal-db
+          property: connectionString

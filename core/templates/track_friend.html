@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Track Friend</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 500px;
+            width: 100%;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Tracking {{ friend.username }}</h2>
+    <p><strong>Contact:</strong> {{ friend.email }}</p>
+    <p><strong>Friend Address:</strong> {{ friend.profile.address }}</p>
+    <p><strong>Latitude:</strong> {{ friend_lat }}</p>
+    <p><strong>Longitude:</strong> {{ friend_lon }}</p>
+    <p><strong>Distance from you:</strong> {{ distance }} km</p>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const userLat = {{ request.user.profile.latitude|default:0 }};
+        const userLon = {{ request.user.profile.longitude|default:0 }};
+        const friendLat = {{ friend_lat|default:0 }};
+        const friendLon = {{ friend_lon|default:0 }};
+
+        const map = L.map('map').setView([friendLat, friendLon], 14);
+
+        // Satellite tile layer (Esri)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics',
+            maxZoom: 20,
+        }).addTo(map);
+
+        // User marker
+        const userMarker = L.marker([userLat, userLon]).addTo(map)
+            .bindPopup("You").openPopup();
+
+        // Friend marker
+        const friendMarker = L.marker([friendLat, friendLon]).addTo(map)
+            .bindPopup("{{ friend.username }}");
+
+        // Draw path (polyline) between both
+        const path = L.polyline([[userLat, userLon], [friendLat, friendLon]], {
+            color: 'red',
+            weight: 3,
+            opacity: 0.7,
+        }).addTo(map);
+
+        // Fit the map view to the polyline bounds
+        map.fitBounds(path.getBounds());
+    </script>
+</body>
+</html>
